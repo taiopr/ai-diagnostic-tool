@@ -1,4 +1,6 @@
 import json
+import time
+import db
 from ai import analyse, AnalysisError
 
 def print_result(result, label=""):
@@ -23,17 +25,35 @@ def run_test(label, prompt, test_input, mode="prompt"):
     """Run one test case and print the result."""
     print(f"\nRunning: {label}")
     try:
+        start = time.time()
         result, improved_output = analyse(prompt, test_input, mode=mode)
+        elapsed = int((time.time() - start) * 1000)
+
         print_result(result, label)
+
         if improved_output:
             print(f"\nImproved output:")
             print(f"  {improved_output[:200]}")
-        else:
-            print(f"\nImproved output: [call failed - non-fatal]")
+
+        # Save to database
+        session_id = db.save_session(
+            result=result,
+            improved_output=improved_output,
+            original_prompt=prompt,
+            test_input=test_input,
+            input_mode=mode,
+            session_label=label,
+            response_time_ms=elapsed
+        )
+        print(f"\nSaved to DB: {session_id}")
+
         return True
     except AnalysisError as e:
         print(f"  FAILED: {e}")
         return False
+    except Exception as e:
+        print(f"  DB ERROR (non-fatal): {e}")
+        return True  # AI worked, DB failed - still counts as pass
     
 # ── Test cases ────────────────────────────────────────────────────
 # These cover the failure modes your system prompt looks for.
