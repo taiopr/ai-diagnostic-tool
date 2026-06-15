@@ -1,6 +1,13 @@
+import os
+from dotenv import load_dotenv
 import requests
 import json
 import time
+
+load_dotenv()
+
+API_KEY = os.getenv("API_KEY")
+HEADERS = {"X-API-KEY": API_KEY}
 
 BASE_URL = "http://127.0.0.1:8000"
 
@@ -12,6 +19,7 @@ def run_diagnostic(label, payload, expect_status=200):
         response = requests.post(
             f"{BASE_URL}/diagnostics",
             json=payload,
+            headers=HEADERS,
             timeout=60
         )
 

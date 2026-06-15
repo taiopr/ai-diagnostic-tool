@@ -1,4 +1,3 @@
-```sql
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE sessions(
@@ -32,4 +31,3 @@ CREATE TABLE issues (
     explanation     TEXT NOT NULL,
     fix             TEXT NOT NULL
 );
-```

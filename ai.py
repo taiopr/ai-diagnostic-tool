@@ -65,29 +65,18 @@ suggested_prompt must be a complete, usable prompt - not a description of change
 
 class DiagnosticIssue(BaseModel):
     type: str
-    # Named category from the taxonomy:
-    # MISSING_SYSTEM_PROMPT, AMBIGUOUS_INSTRUCTION, NO_OUTPUT_FORMAT,
-    # TASK_TOO_BROAD, NO_EXAMPLES, CONFLICTING_INSTRUCTIONS,
-    # NO_ERROR_HANDLING, CONTEXT_OVERLOAD, PROMPT_INJECTION_RISK,
-    # TEMPERATURE_MISMATCH
-
     severity: Literal["high", "medium", "low"]
-    # Literal enforces exactly these three values - anything else fails validation
-
     explanation: str
-    # Why this specific prompt has this problem
-
     fix: str
-    # Exact rewrite or instruction to add - not generic advice
+    
 
 class DiagnosticResult(BaseModel):
     issues: list[DiagnosticIssue]
     test_output: str
-    # What the broken prompt would likely return - shows the failure in action
-    score:int# o-100 overall quality score
-    summary: str# One sentence veredict
+    score:int
+    summary: str
     suggested_prompt: str
-    # Claude's rewritten version of the original prompt
+
 
 class AnalysisError(Exception):
     """Raised when Claude fails to return valid structured output after retries."""

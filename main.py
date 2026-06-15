@@ -2,8 +2,9 @@ import os
 import time
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Security, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 from typing import Literal
 
@@ -12,6 +13,15 @@ import db
 
 load_dotenv()
 
+# ── API key dependency ───────────────────────────────────────────
+api_key_header = APIKeyHeader(name="X-API-KEY")
+API_KEY = os.getenv("API_KEY")
+
+def verify_api_key(key: str = Security(api_key_header)):
+    if key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+# ── App ──────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("AI Diagnostic Tool starting up...")
@@ -102,7 +112,7 @@ class StatsResponse(BaseModel):
 
 # ── POST/diagnostics ─────────────────────────────────────────────────
 
-@app.post("/diagnostics", response_model=DiagnosticResponse)
+@app.post("/diagnostics", response_model=DiagnosticResponse, dependencies=[Depends(verify_api_key)])
 def run_diagnostic(request: DiagnosticRequest):
     """
     Run a full diagnostic on a prompt or n8n workflow.
@@ -157,7 +167,7 @@ def run_diagnostic(request: DiagnosticRequest):
         issues=[IssueResponse(**issue.model_dump()) for issue in result.issues],
         original_output=result.test_output,
         suggested_prompt=result.suggested_prompt,
-        imporved_output=improved_output,
+        improved_output=improved_output,
         response_time_ms=elapsed_ms,
         saved=saved
     )
@@ -165,7 +175,7 @@ def run_diagnostic(request: DiagnosticRequest):
 
 # ── GET/diagnostics/stats ─────────────────────────────────────────────────
 
-@app.get("/diagnostics/stats", response_model=StatsResponse)
+@app.get("/diagnostics/stats", response_model=StatsResponse, dependencies=[Depends(verify_api_key)])
 def get_stats():
     """
     Aggregate analytics across all sessions.
@@ -180,7 +190,7 @@ def get_stats():
 
 # ── GET/diagnostics/{session_id} ──────────────────────────────────────────
 
-@app.get("/diagnostics/{session_id}")
+@app.get("/diagnostics/{session_id}", dependencies=[Depends(verify_api_key)])
 def get_session(session_id: str):
     """
     Retrieve a complete past session with all issues.
@@ -206,7 +216,7 @@ def get_session(session_id: str):
 
 # ── GET/diagnostics ─────────────────────────────────────────────────
 
-@app.get("/diagnostics", response_model=SessionListResponse)
+@app.get("/diagnostics", response_model=SessionListResponse, dependencies=[Depends(verify_api_key)])
 def list_sessions(
     limit: int = Query(default=20, ge=1, le=100),
     mode: str | None = Query(default=None)
