@@ -62,7 +62,7 @@ class DiagnosticRequest(BaseModel):
         description="Whether this is a raw prompt or n8n workflow JSON"
     )
     model_used: str = Field(
-        default="claude-sonnet-4-20250514",
+        default="claude-sonnet-4-6",
         description="The model to use for analysis"
     )
     session_label: str | None = Field(

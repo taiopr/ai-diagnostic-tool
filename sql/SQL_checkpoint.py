@@ -24,7 +24,7 @@ cur.execute("""
     SELECT type, COUNT(*) as count
     FROM issues
     GROUP BY type
-    ORDER BY vount DESC
+    ORDER BY count DESC
 """)
 for row in cur.fetchall():
     print(dict(row))
@@ -33,7 +33,7 @@ for row in cur.fetchall():
 cur.execute("""
     SELECT s.id, s.score, COUNT(i.id) as issue_count
     FROM sessions s
-    LEFT JOIN issues i ON i.sessions_id = s.id
+    LEFT JOIN issues i ON i.session_id = s.id
     GROUP BY s.id, s.score
     ORDER BY issue_count DESC
 """)
@@ -44,7 +44,7 @@ for row in cur.fetchall():
 cur.execute("""
     SELECT i.type, i.severity, i.explanation
     FROM issues i
-    JOIN sessions s ON i.sessions_id = s.id
+    JOIN sessions s ON i.session_id = s.id
     WHERE s.score = (SELECT MIN(score) FROM sessions)
     ORDER BY i.severity
 """)

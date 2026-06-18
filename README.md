@@ -259,7 +259,23 @@ python test_suite.py    # full API suite - 20 cases (requires uvicorn running)
 - **No rate limiting:** A single client can flood the API. Simple middleware would cap requests per IP.
 - **n8n mode is structural:** Analyses AI node configuration for missing prompts, no output parser, no error branch. Does not parse or validate the full workflow JSON schema.
 - **LLM misclassification:** The diagnostic call can misidentify problems or miss them. The fixed taxonomy reduces but does not eliminate this. Inherent to LLM-based diagnosis.
+- **Score Variance on Identical Inputs:** Diagnostic scores show measurable run-to-run variance on identical inputs. Initially observed range was 62-78 for the same prompt across multiple runs. Pinning `temperature=0` in `call_claude()` was expected to resolve this, but repeated testing after the fix still showed a 52-62 range — meaning temperature alone isn't the full explanation. Likely cause: the system prompt asks for a holistic score judgment rather than a fixed point-deduction formula, leaving room for reasoning-level variation even with deterministic token sampling. Not yet fully resolved; a stricter, more mechanical scoring rubric in the system prompt is a plausible next step.
 
+## Lessons Learned
+
+**Pinned model versions can break without warning.** While wiring the frontend to 
+the backend (Week 10), the app started failing with a 404 from the Anthropic API: 
+`model: claude-sonnet-4-20250514` not found. Turned out the model was deprecated 
+and retired on the API the day before — code that worked fine on Monday stopped 
+working on Tuesday with zero changes on my end.
+
+Fix was a one-line model string update in `ai.py` to the current Sonnet model. 
+But the real takeaway: hardcoding a specific model snapshot ID is a maintenance 
+liability in any app that calls an LLM API in production. A more resilient setup 
+would either use a model alias instead of a dated snapshot, or at minimum log/alert 
+on 404s from the model name specifically, rather than letting them surface as a 
+generic "service unavailable" to the end user.
+The request schema has a per-request model_used override field, which is why the fix needed two separate edits instead of one.
 
 ---
  

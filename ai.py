@@ -9,7 +9,7 @@ load_dotenv()
 
 client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-MODEL = "claude-sonnet-4-20250514"
+MODEL = "claude-sonnet-4-6"
 
 SYSTEM_PROMPT = """You are an expert LLM integration engineer. Your job is to \
 analyse prompts and AI configurations for common failure patterns that cause \
@@ -129,6 +129,7 @@ def call_claude(messages: list[dict], model: str = MODEL) -> str:
         response = client.messages.create(
             model=model,
             max_tokens=4096,
+            temperature=0,
             system=SYSTEM_PROMPT,
             messages=messages
         )
