@@ -14,11 +14,14 @@ ORDER BY occurrences DESC;
 
 -- 2. Does failure rate vary by hour of day?
 -- Answers: "Is there a time-based pattern in poor-quality submissions?"
--- Note: with a personal/low-volume dataset, this mostly reflects what kind
--- of prompts were being tested during a given hour (casual debugging vs.
--- demo examples) rather than a genuine time-of-day effect. Percentages from
--- hours with very few sessions should be treated as unreliable noise.
-SELECT EXTRACT(HOUR FROM created_at) as hour_of_day,
+-- Note: created_at is stored without timezone info but represents UTC wall-clock
+-- time (confirmed via a uniform +2 hour shift after correction). Converted to
+-- Europe/Madrid local time here so "hour of day" reflects when sessions actually
+-- happened for a Barcelona-based user, not raw UTC. With a personal/low-volume
+-- dataset, this still mostly reflects what kind of prompts were being tested
+-- during a given hour rather than a genuine time-of-day effect. Percentages
+-- from hours with very few sessions should be treated as unreliable noise.
+SELECT EXTRACT(HOUR FROM created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Madrid') as hour_of_day,
        COUNT(*) as total_sessions,
        COUNT(*) FILTER (WHERE score < 40) as low_score_sessions,
        ROUND(COUNT(*) FILTER (WHERE score < 40) * 100.0 / COUNT(*), 1) as low_score_pct
