@@ -52,7 +52,7 @@ No markdown code fences. The JSON must match this exact schema:
     ],
     "test_output": "what this prompt would likely return for the test input, showing the failure",
     "score": 34,
-    "summary": "one sentence veredict on the overall prompt quality",
+    "summary": "one sentence verdict — maximum 120 characters, plain English, no technical jargon",
     "suggested_prompt": "your complete rewritten version of the prompt with all issues fixed"
 }
 
