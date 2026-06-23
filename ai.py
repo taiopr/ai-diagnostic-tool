@@ -59,7 +59,7 @@ No markdown code fences. The JSON must match this exact schema:
 Severity: high = will cause failures in production, medium = degrades quality, \
 low = best practice violation.
 Only include issues that actually apply. Do not fabricate issues that aren't present.
-Score 0-100 where 100 is production-ready.
+Score 0-100 where 100 is production-ready. Derive the score mathematically: start at 100 and deduct based on severity of issues found (high severity: deduct 15-25 points each, medium: deduct 5-10 points each, low: deduct 1-3 points each). The score must be consistent with the issues list — a prompt with 3 high severity issues cannot score above 55. Avoid anchoring to round numbers; a score of 73 is more honest than 70.
 suggested_prompt must be a complete, usable prompt - not a description of changes."""
 
 
