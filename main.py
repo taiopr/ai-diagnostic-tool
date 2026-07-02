@@ -1,5 +1,7 @@
 import os
 import time
+import json
+import httpx
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Security, Depends
@@ -7,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 from typing import Literal
+from webhook_models import WebhookPayload
+from db import get_connection
 
 from ai import analyse, AnalysisError
 import db
@@ -252,4 +256,52 @@ def health():
     return {
         "status": "healthy",
         "service": "AI Integration Diagnostic Tool"
+    }
+
+
+# ── Webhook ───────────────────────────────────────────────────
+
+N8N_WEBHOOK_URL = "http://localhost:5678/webhook/fastapi-events" 
+
+@app.post("/webhook")
+async def receive_webhook(payload: WebhookPayload):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO webhook_events (source, event_type, payload, status)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id, received_at
+            """,
+            (
+                payload.source,
+                payload.event_type,
+                json.dumps(payload.model_dump()),
+                "received"
+            )
+        )
+        row = cur.fetchone()
+        event_id = row[0]
+        received_at = row[1]
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    
+    n8n_triggered = False
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            n8n_response = await client.post(N8N_WEBHOOK_URL, json=payload.model_dump())
+            n8n_triggered = n8n_response.status_code == 200
+        print(f"n8n response status: {n8n_response.status_code}")
+    except Exception as e:
+        print(f"n8n forward failed: {e}")
+
+    return {
+        "status": "accepted",
+        "event_id": event_id,
+        "received_at": received_at.isoformat(),
+        "n8n_triggered": n8n_triggered
     }
