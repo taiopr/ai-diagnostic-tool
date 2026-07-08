@@ -11,7 +11,7 @@ client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 MODEL = "claude-sonnet-4-6"
 
-SYSTEM_PROMPT = """You are an expert LLM integration engineer. Your job is to \
+SYSTEM_PROMPT_BASE = """You are an expert LLM integration engineer. Your job is to \
 analyse prompts and AI configurations for common failure patterns that cause \
 unreliable, unsafe, or low-quality outputs in production systems.
         
@@ -59,8 +59,38 @@ No markdown code fences. The JSON must match this exact schema:
 Severity: high = will cause failures in production, medium = degrades quality, \
 low = best practice violation.
 Only include issues that actually apply. Do not fabricate issues that aren't present.
-Score 0-100 where 100 is production-ready. Derive the score mathematically: start at 100 and deduct based on severity of issues found (high severity: deduct 15-25 points each, medium: deduct 5-10 points each, low: deduct 1-3 points each). The score must be consistent with the issues list — a prompt with 3 high severity issues cannot score above 55. Avoid anchoring to round numbers; a score of 73 is more honest than 70.
-suggested_prompt must be a complete, usable prompt - not a description of changes."""
+Score 0-100 where 100 is production-ready. Derive the score mathematically: start at 100 and deduct based on severity of issues found (high severity: deduct 15-25 points each, medium: deduct 5-10 points each, low: deduct 1-3 points each). The score must be consistent with the issues list — a prompt with 3 high severity issues cannot score above 55. Avoid anchoring to round numbers; a score of 73 is more honest than 70."""
+
+SYSTEM_PROMPT_MODE_SUFFIX = {
+    "prompt": """
+suggested_prompt must be a complete, usable prompt - not a description of changes.""",
+
+    "n8n_workflow": """
+The input is an n8n workflow, given to you as JSON. It contains one or more nodes; \
+the prompt you must diagnose is the text inside an AI/agent node's `parameters.prompt` \
+field (e.g. a `@n8n/n8n-nodes-langchain.agent` node) - not the JSON structure itself. \
+Evaluate that embedded prompt text against the failure patterns above, taking into \
+account how it's used in the workflow (for example, values interpolated via \
+`{{ $json.fieldName }}` expressions are equivalent to untrusted user input and should \
+be assessed for PROMPT_INJECTION_RISK just like any other user-supplied text).
+
+test_output must simulate what the AI/agent node would output for the given test input, \
+given the current issues in its prompt - not a description of the workflow.
+
+suggested_prompt must be ONLY the corrected prompt text meant to replace the value of \
+`parameters.prompt` in that node - a complete, usable prompt on its own, not the \
+surrounding JSON structure and not a description of changes. Someone using this tool \
+will copy suggested_prompt directly into their n8n node.""",
+}
+
+
+def build_system_prompt(mode: str) -> str:
+    """
+    Build the system prompt for a given input mode. Falls back to the
+    plain-prompt suffix for any unrecognised mode.
+    """
+    suffix = SYSTEM_PROMPT_MODE_SUFFIX.get(mode, SYSTEM_PROMPT_MODE_SUFFIX["prompt"])
+    return SYSTEM_PROMPT_BASE + "\n" + suffix
 
 
 class DiagnosticIssue(BaseModel):
@@ -120,7 +150,7 @@ Analyse this prompt and return your diagnosis as JSON."""
 
 # ── Job 2 - Call Claude ───────────────────────────────────────────────────────
 
-def call_claude(messages: list[dict], model: str = MODEL) -> str:
+def call_claude(messages: list[dict], system: str, model: str = MODEL) -> str:
     """
     Send messages to Claude and return the raw text response.
     Raises AnalysisError if the API call fails.
@@ -130,7 +160,7 @@ def call_claude(messages: list[dict], model: str = MODEL) -> str:
             model=model,
             max_tokens=4096,
             temperature=0,
-            system=SYSTEM_PROMPT,
+            system=system,
             messages=messages
         )
         return response.content[0].text
@@ -172,9 +202,10 @@ def analyse(
     improved_output is None if the validation call fails.
     """
     messages = build_messages(original_prompt, test_input, mode)
+    system = build_system_prompt(mode)
 
     for attempt in range(2):
-        raw = call_claude(messages, model)
+        raw = call_claude(messages, system, model)
 
         try:
             result = parse_response(raw)
