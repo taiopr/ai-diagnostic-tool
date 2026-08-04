@@ -204,7 +204,7 @@ ORDER BY hour;
 ## Setup
 
 ### Prerequisites
-- Python 3.11+
+- Python 3.13+
 - PostgreSQL (Railway Hobby plan works)
 - Anthropic API key
 
