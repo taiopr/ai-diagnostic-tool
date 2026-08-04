@@ -288,7 +288,7 @@ python test_suite.py    # full API suite — 20 cases (requires uvicorn running)
 
 | Layer | Technology |
 |-------|------------|
-| Language | Python 3.11 |
+| Language | Python 3.13 |
 | Web framework | FastAPI + Uvicorn |
 | AI provider | Anthropic API — claude-sonnet-4-6 |
 | Database | PostgreSQL (Railway) + psycopg2-binary |
